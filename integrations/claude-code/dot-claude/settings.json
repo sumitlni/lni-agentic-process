@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/boot-read-order.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ABP_EMIT_JSON=1 bash \"$CLAUDE_PROJECT_DIR/scripts/budget-guard.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

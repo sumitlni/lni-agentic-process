@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Agentic Build Practices — pre-commit budget nudge.
+# Never blocks a commit; just reminds you to run close-round if the continuation files are bloated.
+# Install: cp this to .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+
+# Check every folder that has a progress file (adjust the find prune list to your repo).
+while IFS= read -r pf; do
+  ( cd "$(dirname "$pf")" && bash "$repo_root/scripts/budget-guard.sh" ) || true
+done < <(find "$repo_root" \
+           -name node_modules -prune -o \
+           -name .git -prune -o \
+           -name "progress.md" -print 2>/dev/null)
+
+exit 0
