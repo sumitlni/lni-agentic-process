@@ -11,7 +11,7 @@ It's the process I describe in this LinkedIn series:
 - Part 2 — The data constraint that forced real engineering: [link](https://lnkd.in/p/gW3q5x97)
 - Part 3 — "Give it the keys and let it drive": [link](https://lnkd.in/p/giQxy7jC)
 - Part 4 — The missing pieces: decision records and an orchestrator: [link](https://lnkd.in/p/gp6nnfD5)
-- Part 5 — Conclusion and final thoughts: [link](#)
+- Part 5 — Conclusion and final thoughts: [link](https://lnkd.in/p/gsMBBWQH)
 
 I will keep updating this as the process evolves. I'd love to hear your thoughts on how to make it better.
 
