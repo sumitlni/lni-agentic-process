@@ -31,7 +31,7 @@ lives in `docs/current-build.md` one pointer away.
 **There are two kinds of status, and they're stored differently.** `UI-8` is *work* — when it ships it
 leaves `queue.md` automatically. `DEPLOY-CENTS` is a *gate*: a human deploy that no commit records.
 Delete that row and the fact is simply gone — so it stays on the board until it's done. Conflating
-these is what rots a tracker (see `BUILD_PRACTICES.md` §9).
+these is what rots a tracker (see `BUILD_PRACTICES.md` §10).
 
 To try it, copy `tools/status/status.py` + `STATUS.html` into `Strategy/` and run:
 

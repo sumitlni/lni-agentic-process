@@ -22,6 +22,7 @@ BUILD_PRACTICES.md          The method (model- and tool-agnostic). Start here.
 CONFIGURE.md                The instance layer — the placeholders you fill in.
 procedures/
   close-round.md            The round-end hygiene procedure (any agent or you can follow it).
+  review-round.md           The coordinator's review pass — verify by a DIFFERENT path than the round.
   round-prompt-template.md  A paste-ready round-prompt skeleton.
 scripts/                    Plain bash, no LLM required.
   check-budget.sh           Reports token-ish sizes of your progress/task files.
@@ -71,6 +72,10 @@ A few things here are deliberate, and a little different from how people usually
   ledger already record it. Gates (a deploy, a migration, a tag, an approval) stay, because nothing
   else records them. One JSON file is the truth, the board is generated from it, and a checker fails
   loudly when it starts lying.
+- **A review has to take a different path than the round did.** Two agents agreeing isn't evidence —
+  it's the same computation, signed twice. Re-deriving the round's own formula and getting the same
+  answer is an echo, not a check. Run the thing that actually produces the output. (I learned this one
+  the embarrassing way too.)
 - **It's not tied to Claude.** The core is plain text and plain bash. Most people will run it with
   Claude, but a local model or any other agent works just as well.
 - **You keep the keys.** Agents never push or deploy — that stays with you.

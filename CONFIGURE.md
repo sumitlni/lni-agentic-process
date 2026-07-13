@@ -33,7 +33,7 @@ round in that folder):
 - **Ledger (one line per round — archive, carries NO status):** `<path>`
 - **Presence board (a LOCK, not a status board):** `<path — e.g. current.md>`
 
-## Status board (BUILD_PRACTICES §9)
+## Status board (BUILD_PRACTICES §10)
 
 Drop `tools/status/` into your process folder and create `status.json` beside it.
 

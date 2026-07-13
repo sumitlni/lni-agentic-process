@@ -6,7 +6,8 @@ of it is describing your project once, in `CONFIGURE.md`, so you never have to d
 ## 1. Read the method
 
 Read `BUILD_PRACTICES.md` once. You don't need to memorize it — it's the reference — but understand
-the two tiers, the round loop, and the write budget.
+the two tiers, the round loop, the write budget, and §3: **a review has to reach the answer by a
+different route than the round did**, or it isn't a review.
 
 ## 2. Fill in your instance
 
@@ -53,7 +54,7 @@ python3 status.py             # the dashboard; click a badge to change a status
 
 Two rules that make it worth having: **the coordinator is the only one who hand-edits `status.json`**,
 and **a shipped round is marked `done` in the same pass that writes the ledger entry** — it then leaves
-the rendered board on its own. Full reasoning in `BUILD_PRACTICES.md` §9.
+the rendered board on its own. Full reasoning in `BUILD_PRACTICES.md` §10.
 
 ## 5. Wire one integration
 
@@ -78,7 +79,10 @@ Both call the same scripts — pick whichever matches how you drive your agent. 
    work, runs the checks.
 3. At the end, it runs **close-round** (the skill, `make close-round`, or by hand) — pruning the
    continuation files and setting its presence row idle.
-4. The coordinator reviews, lands the ledger entry, and reconciles the files if needed.
+4. The coordinator reviews using `procedures/review-round.md` — **by a different path than the round
+   took** (§3): run the authoritative producer and check what it actually emits; don't re-derive the
+   round's own formula and call the agreement a check. Then land the ledger entry and mark the round
+   `done` on the board.
 
 ## 8. Keep it honest
 

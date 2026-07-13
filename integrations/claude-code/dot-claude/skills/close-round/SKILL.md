@@ -32,4 +32,4 @@ Run only after the round is **verified** (your folder's checks pass, the demo/ac
 
 Boundary: edit only this folder's continuation files and its own presence-board row. Coordinator-owned
 surfaces (`status.json`, the ledger) are surfaced to, not reached across. Never edit the rendered board
-(`queue.md`) — it is generated. Details + rationale: `BUILD_PRACTICES.md` §4, §7, §8, §9.
+(`queue.md`) — it is generated. Details + rationale: `BUILD_PRACTICES.md` §3, §5, §8, §9, §10.

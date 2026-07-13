@@ -19,6 +19,9 @@ day, but nothing in the method depends on it.
 
 - **`.claude/skills/close-round/SKILL.md`** — the round-end hygiene skill. The coding session invokes
   it as its close-out step; it runs `scripts/check-budget.sh` and follows `procedures/close-round.md`.
+- **`.claude/skills/review-round/SKILL.md`** — the coordinator's review skill. Invoke it in the
+  orchestrating session when a round comes back; it enforces §3 (verify by a **different path** than
+  the round used) and follows `procedures/review-round.md`.
 - **SessionStart hook** → `scripts/boot-read-order.sh` — prints the READ ORDER on a fresh session and
   a "read only the delta" note on a resumed one, so round prompts don't restate the boot steps.
 - **Stop hook** → `scripts/budget-guard.sh` (with `ABP_EMIT_JSON=1`) — nudges the session to run

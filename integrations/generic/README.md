@@ -22,14 +22,17 @@ Edit `scripts/abp.conf.sh` for your file names, budgets, and READ ORDER.
 - `make budget` — show current continuation-file sizes vs budget.
 - `make close-round` — print the close-round procedure to follow (then do it, or hand it to your
   agent). It also runs the before/after size checks.
+- `make review-round` — the coordinator's review checklist: verify by a **different path** than the
+  round used, not by re-deriving its own formula.
 
 ## How it maps to the method
 
 | Method piece (BUILD_PRACTICES.md) | Generic wiring |
 |---|---|
-| Boot READ ORDER (§6) | `make boot` / `make boot-resume` |
-| Write-budget nudge (§4) | `pre-commit` hook runs `budget-guard.sh` |
-| close-round (§7) | `make close-round` prints `procedures/close-round.md` |
+| Boot READ ORDER (§7) | `make boot` / `make boot-resume` |
+| Write-budget nudge (§5) | `pre-commit` hook runs `budget-guard.sh` |
+| close-round (§8) | `make close-round` prints `procedures/close-round.md` |
+| review-round (§3) | `make review-round` prints the coordinator's review rule |
 
 ## Local-LLM tip
 

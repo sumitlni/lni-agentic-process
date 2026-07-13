@@ -4,7 +4,7 @@
 SCRIPTS ?= scripts
 STATUS  ?= Strategy          # the folder holding status.py + status.json (see CONFIGURE.md)
 
-.PHONY: boot boot-resume budget status status-render close-round help
+.PHONY: boot boot-resume budget status status-render close-round review-round help
 
 help:
 	@echo "make boot           - print the READ ORDER for a fresh session"
@@ -13,6 +13,7 @@ help:
 	@echo "make status         - VALIDATE the status board (non-zero exit on error)"
 	@echo "make status-render  - regenerate the rendered board (queue.md) from status.json"
 	@echo "make close-round    - size check + status check + the close-round procedure to follow"
+	@echo "make review-round   - the coordinator's review checklist (verify by a DIFFERENT path)"
 
 boot:
 	@bash $(SCRIPTS)/boot-read-order.sh startup
@@ -28,6 +29,12 @@ status:
 
 status-render:
 	@python3 $(STATUS)/status.py --render
+
+review-round:
+	@echo "Coordinator review — follow procedures/review-round.md"
+	@echo "  The rule: reach the conclusion by a DIFFERENT route than the round used."
+	@echo "  Re-deriving the round's own formula is not a check; run the authoritative producer."
+	@echo "  Name the route in your note. Then: make status-render && make status"
 
 close-round:
 	@bash $(SCRIPTS)/check-budget.sh

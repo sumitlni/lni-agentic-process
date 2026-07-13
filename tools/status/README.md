@@ -1,6 +1,6 @@
 # tools/status — one source of truth, generated views, and a checker
 
-Three files, stdlib Python only, no dependencies. They implement §9 of `BUILD_PRACTICES.md`. I wrote
+Three files, stdlib Python only, no dependencies. They implement §10 of `BUILD_PRACTICES.md`. I wrote
 these after my own tracker grew into a 2,504-line file that was quietly lying to me — the checker is
 the part that matters, not the dashboard.
 

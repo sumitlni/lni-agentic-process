@@ -26,6 +26,9 @@ MUST NOT
 
 VERIFY
 - <folder checks: tests/build/lint green> + <the manual demo/acceptance checklist>.
+- RUN the thing, don't just read it: execute the authoritative producer and inspect what it emits.
+- Any NEW guard must be shown to FAIL against the pre-round code — otherwise it guards nothing.
+- State the route you took. "Verified" with no stated path is not a result.
 
 CLOSE-OUT
 - Run the close-round procedure: prune the progress State to a pointer + update the as-built section,

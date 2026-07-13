@@ -53,7 +53,64 @@ A **round** is a numbered, scoped change — the contract between coordination a
 
 ---
 
-## 3. Source-of-truth vs as-built — and read by section
+## 3. Verification must take a DIFFERENT PATH than the round's proof
+
+**A check that retraces the round's own reasoning is not verification — it is duplication.** The
+reviewer has to reach the conclusion by a **different route** than the one the round used to produce
+it. Two computations of the same wrong model agreeing is not evidence; it is the same error, signed
+twice.
+
+This is the same rule the method enforces on code — one fact, one copy — applied to the act of
+checking. The point of a review pass is to be a second, *independent* source. If it isn't independent
+it's theatre, and worse than nothing: it launders a wrong answer into a verified one.
+
+It binds the **coordinator** hardest, since the coordinator reviews what the implementer produced. The
+last three rules bind the implementer too.
+
+The coordinator's checklist for this lives in `procedures/review-round.md`.
+
+**The rules**
+
+- **Never re-implement the round's logic to check the round's logic.** If the round computed a number
+  from a formula, do **not** recompute that formula. **Run the authoritative producer** — the engine,
+  the real function, the actual artifact — and compare against *that*.
+- **Never trust a name.** A field called `itemCount`, a comment claiming "the old path is gone", a test
+  named `rejects_bad_input` — assert the **behaviour**. Read the emitted object, not the label on it.
+- **"The tests pass" is not proof of a rule.** A test can lock in the wrong number. Ask what the test
+  compares *against*: **if both sides are derivations, it guards nothing.** A new guard must be shown to
+  **FAIL against the pre-round code** — otherwise you haven't shown it can fail at all.
+- **Prefer running to reading.** Execute it headless and inspect the artifact it produces. Source tells
+  you what someone *intended*; the artifact tells you what *happens*.
+- **State the route you took.** A verification note must name the independent source it checked against.
+  "Verified ✅" with no stated path is worth nothing, and shouldn't be accepted.
+- **If no independent route exists, say so and ask.** Sometimes the only check available is the one the
+  round already ran — an authed environment you can't reach, hardware you don't have, a judgment call
+  about how a screen looks. That's allowed. What is **not** allowed is quietly calling it verified.
+  Tell the human what you *couldn't* check and why, and get their approval before the round is marked
+  complete. An unverifiable claim is fine; an unverifiable claim wearing a checkmark is not.
+
+**Where this came from — both directions, in one week.**
+
+*The good case.* A round hoisted a set of duplicated rules into a shared engine. Every ruling was
+checked by **running** the engine headless and asserting the behaviour it actually produced — not by
+reading the diff and agreeing with it. Independent path, real confidence.
+
+*The failure.* A round computed a design size as `rows × steps`. To "verify" it, I recomputed **the same
+formula** over the same fixtures, got the same answers, and reported *"0 mismatches, independently
+verified."* It was not independent — it re-ran the round's own premise, and the premise was wrong. The
+real generator emits one item per *run*, and for one shape of input it emits **2** where the formula
+says **4**. Running the generator — the thing that actually produces the output — would have caught it
+in one command. Instead the wrong number shipped **with a guard test locking it in**, and surfaced later
+only because the next session happened to read its own work.
+
+The tell, in hindsight: *the reviewer never executed the code that owns the rule.*
+
+(Same instinct as §10's "verify against the code, not the board" — applied to a round instead of the
+tracker.)
+
+---
+
+## 4. Source-of-truth vs as-built — and read by section
 
 Keep two kinds of document apart:
 
@@ -72,7 +129,7 @@ the as-built doc, and progress just points at it.
 
 ---
 
-## 4. Continuation files: a write budget, enforced
+## 5. Continuation files: a write budget, enforced
 
 Each folder keeps two continuation files (names are yours — set in `CONFIGURE.md`; commonly
 `progress.md` and `todo.md`). They are **continuation state, not a changelog**:
@@ -86,7 +143,7 @@ Each folder keeps two continuation files (names are yours — set in `CONFIGURE.
   prompt). Keep open work, human-pending items, and un-rolled-up "surfaced" notes.
 
 **Why it drifts without enforcement:** rounds *append* and nothing *prunes*. The fix is to make the
-prune mechanical — see the **close-round** procedure (§7) — and to nudge when files exceed budget
+prune mechanical — see the **close-round** procedure (§8) — and to nudge when files exceed budget
 (`scripts/check-budget.sh`). Set your soft budget in `CONFIGURE.md` (a few thousand tokens each is a
 sane default).
 
@@ -95,7 +152,7 @@ not by splitting.
 
 ---
 
-## 5. Decision capture
+## 6. Decision capture
 
 Treat *decisions* and *implementation* as separate first-class artifacts. Capture a cross-cutting
 decision once, with enough context that a future reader understands what was chosen and why;
@@ -110,7 +167,7 @@ works.)
 
 ---
 
-## 6. Session operating discipline
+## 7. Session operating discipline
 
 - **Boot before acting.** A fresh session follows its READ ORDER (source-of-truth → as-built section →
   the round's cited files). Print it automatically (`scripts/boot-read-order.sh`) so prompts don't
@@ -132,19 +189,19 @@ works.)
 
 ---
 
-## 7. Round-end hygiene: close-round
+## 8. Round-end hygiene: close-round
 
 At the end of every *verified* round, run the **close-round** procedure (`procedures/close-round.md`)
-from the round's folder. It mechanizes what §4 describes so nobody has to remember it:
+from the round's folder. It mechanizes what §5 describes so nobody has to remember it:
 
 1. Size check (before) — `scripts/check-budget.sh`.
 2. Progress `State` → pointer index; update the ONE affected line + the as-built doc section (don't
    append a paragraph).
 3. Recent rounds → keep the last N; archive older.
 4. Task file → delete shipped items; keep open / human-pending / surfaced.
-5. Status board (§9) → mark the round `done` in the JSON **in the same pass that writes the ledger
+5. Status board (§10) → mark the round `done` in the JSON **in the same pass that writes the ledger
    entry**, then re-render + `--check`. The item leaves the rendered board automatically.
-6. Presence board (§8) → set this folder's row idle.
+6. Presence board (§9) → set this folder's row idle.
 7. Size check (after) — confirm the files held or shrank.
 
 An agent runs this as its close-out step (it's in the round-prompt template + the boot reminder); a
@@ -152,14 +209,14 @@ budget guard nudges if it's skipped. This is the piece that keeps the whole syst
 
 ---
 
-## 8. The presence board is a LOCK, not a status board
+## 9. The presence board is a LOCK, not a status board
 
 A single small file (`current.md`), one row per folder, with a status (`idle` / `IN PROGRESS`), the
 round, and a timestamp. An implementer sets **its own row** `IN PROGRESS` at round start and `idle` at
 end — the one shared file it may write. The coordinator checks it before editing any prompt or spec a
 running session reads. Advisory, not a hard lock — never auto-expire a row; if one looks stale, ask.
 
-**Do not merge this with the status board (§9).** They answer different questions and have different
+**Do not merge this with the status board (§10).** They answer different questions and have different
 writers: the presence board answers *"is this folder safe to touch right now?"* and is written by the
 **implementer**; the status board answers *"what is the state of the work?"* and is written by the
 **coordinator**. Collapsing them puts two writers on one file — the concurrency bug that makes a
@@ -171,7 +228,7 @@ lock you have to scroll is a lock nobody checks.*
 
 ---
 
-## 9. Status management — two KINDS of status, one source, generated views
+## 10. Status management — two KINDS of status, one source, generated views
 
 The single most useful thing I learned about tracking work: **there are two kinds of status, and
 conflating them is what rots a tracker.**
@@ -261,7 +318,7 @@ the comment. No status file can catch that. Only reading the code can.
 - **One writer per file.** The coordinator edits the JSON — when it drafts a round, and on every
   verification pass. You flip statuses from the dashboard (which writes the same file). **Nobody edits
   the rendered board or the dashboard HTML.** (The presence board is a *different* file with a
-  different writer — see §8. Don't merge them.)
+  different writer — see §9. Don't merge them.)
 - **Ship = mark `done` in the JSON, in the same pass that writes the ledger entry.** The item then
   leaves the *rendered* board automatically. It is retained in the JSON — that is the history, and for
   a gate it is the *only* record that exists.
@@ -301,7 +358,7 @@ still contains sentences that were true when written and are lies now.
 
 ---
 
-## 10. Hard rules (you fill these in)
+## 11. Hard rules (you fill these in)
 
 A few decisions should be **hard rules** — non-negotiable, override default behavior, no relitigation
 without changing the source of truth. They exist because they're easy to violate by accident and
@@ -315,7 +372,7 @@ Two that nearly every project wants:
 
 ---
 
-## 11. Adopt it
+## 12. Adopt it
 
 See `docs/ADOPTING.md` for a step-by-step, and `example/` for a small filled-in instance. The shortest
 path: fill `CONFIGURE.md`, drop in `scripts/`, wire one integration (`integrations/claude-code/` or

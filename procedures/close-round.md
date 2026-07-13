@@ -28,7 +28,7 @@ Names and budgets below come from your `CONFIGURE.md`.
    captures), and un-rolled-up "surfaced to coordinator" notes. If unsure whether an item is still
    open, ask — don't retain by default.
 
-5. **Status board + ledger — in the SAME pass** (`BUILD_PRACTICES.md` §9). **Ship = mark the item
+5. **Status board + ledger — in the SAME pass** (`BUILD_PRACTICES.md` §10). **Ship = mark the item
    `done` in `status.json`, in the same pass that writes the ledger entry.** Then re-render and
    validate:
 
@@ -40,8 +40,10 @@ Names and budgets below come from your `CONFIGURE.md`.
    The item is **retained** in `status.json` — that's the history, and for a gate it's the only record
    that exists. Don't delete it, and don't hand-edit `queue.md`.
 
-   **Before you mark it done, verify against the CODE, not the board.** Check the thing the round asked
-   for actually exists in the source. A round is not verified because a session said so.
+   **Before you mark it done, verify against the CODE, not the board** — and by a DIFFERENT PATH than
+   the round used (§3). Don't recompute the round's own formula and call the agreement a check; run the
+   authoritative producer and compare against what it actually emits. Name the route you took. A round
+   is not verified because a session said so.
 
    If the round surfaced a new **gate** (a deploy, a migration, a tag, an approval — anything human or
    external that no commit records), add it to `status.json` now, with an owner and a `note`. If you
