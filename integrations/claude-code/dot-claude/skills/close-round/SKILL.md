@@ -22,10 +22,14 @@ Run only after the round is **verified** (your folder's checks pass, the demo/ac
      append a paragraph);
    - keep the last N rounds, archive older;
    - task file → open items only (delete settled write-ups);
-   - reconcile the status rollup + task file in the same pass (if you use a rollup);
-   - ledger + presence board: implementers surface the ledger entry and set only their own row to
-     idle; the coordinator lands the ledger entry.
+   - **status board + ledger in the SAME pass** — mark the round `done` in `status.json`, then
+     `python3 status.py --render && python3 status.py --check`. **Verify against the CODE first**: a
+     round is not done because a session said so. If the round surfaced a new **gate** (deploy,
+     migration, tag, approval), add it now — nothing else records it;
+   - presence board: implementers surface the ledger entry + any new gate and set only their own row
+     to idle; the coordinator lands the ledger and `status.json` changes.
 3. Size check (after): re-run `bash scripts/check-budget.sh`; confirm both files held or shrank.
 
 Boundary: edit only this folder's continuation files and its own presence-board row. Coordinator-owned
-surfaces are surfaced to, not reached across. Details + rationale: `BUILD_PRACTICES.md` §4, §7, §8.
+surfaces (`status.json`, the ledger) are surfaced to, not reached across. Never edit the rendered board
+(`queue.md`) — it is generated. Details + rationale: `BUILD_PRACTICES.md` §4, §7, §8, §9.

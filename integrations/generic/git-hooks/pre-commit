@@ -14,4 +14,20 @@ done < <(find "$repo_root" \
            -name .git -prune -o \
            -name "progress.md" -print 2>/dev/null)
 
+# Validate the status board if one exists. This one DOES block: an incoherent board (dangling
+# blocker, cycle, a drafted round with no prompt, a parked item with no reason) is a bug, and the
+# whole point is that nothing verifies a tracker unless something fails loudly.
+# Set ABP_STATUS_DIR if your status.py lives somewhere other than Strategy/.
+status_dir="${ABP_STATUS_DIR:-$repo_root/Strategy}"
+if [[ -f "$status_dir/status.py" && -f "$status_dir/status.json" ]]; then
+  if ! python3 "$status_dir/status.py" --check; then
+    echo "[pre-commit] status board is incoherent — fix it, or commit with --no-verify." >&2
+    exit 1
+  fi
+  python3 "$status_dir/status.py" --render --check-sync || {
+    echo "[pre-commit] rendered board is stale — run: python3 status.py --render" >&2
+    exit 1
+  }
+fi
+
 exit 0

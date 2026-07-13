@@ -1,8 +1,12 @@
 # Active sessions — presence board
 
-One row per implementer folder. A session sets its own row to `IN PROGRESS` at round start and back to
-`idle` at round end (via close-round). The coordinator checks this before editing any prompt/spec a
-running session reads. Never auto-expire a row — if one looks stale, ask the human.
+**This is a LOCK, not a status board.** It answers one question: *is this folder safe to touch right
+now?* The work's status lives in `Strategy/status.json` (rendered to `queue.md`) — a different file,
+with a different writer. Don't merge them; two writers on one file is what makes a lock useless.
+
+One row per implementer folder, **one line each**. A session sets its own row to `IN PROGRESS` at round
+start and back to `idle` at round end (via close-round). The coordinator checks this before editing any
+prompt/spec a running session reads. Never auto-expire a row — if one looks stale, ask.
 
 | Folder | Status | Round  | Started (UTC)        |
 |--------|--------|--------|----------------------|

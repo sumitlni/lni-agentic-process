@@ -1,0 +1,97 @@
+{
+  "project": "Ledgerly",
+  "subtitle": "personal expense tracker · rounds, gates, and coordinator jobs",
+  "last_updated": "2026-03-05",
+  "modules": [
+    "Web",
+    "API",
+    "Cross-cutting"
+  ],
+  "items": [
+    {
+      "id": "UI-7",
+      "module": "Web",
+      "type": "round",
+      "title": "Category filter on the transactions list",
+      "status": "done",
+      "drafted": true,
+      "owner": "code",
+      "note": "SHIPPED & VERIFIED 2026-03-04. Single-select, URL-synced, composes with search. Tests + build + lint green.",
+      "ref": "round-prompts.md",
+      "sec": "UI-7"
+    },
+    {
+      "id": "API-4",
+      "module": "API",
+      "type": "round",
+      "title": "Integer-cents money type + migration 0003",
+      "status": "done",
+      "drafted": true,
+      "owner": "code",
+      "note": "SHIPPED 2026-03-02. Decision 0002 landed with it. No float ever reaches the API boundary.",
+      "ref": "round-prompts.md",
+      "sec": "API-4"
+    },
+    {
+      "id": "UI-8",
+      "module": "Web",
+      "type": "round",
+      "title": "Empty state for a filtered list with no matches",
+      "status": "pending",
+      "drafted": true,
+      "owner": "code",
+      "note": "Blank table today. Add a 'no transactions match this filter' row with a clear-filters link.",
+      "ref": "round-prompts.md",
+      "sec": "UI-8"
+    },
+    {
+      "id": "DEPLOY-CENTS",
+      "module": "Cross-cutting",
+      "type": "ops",
+      "title": "Deploy the cents formatter to staging before the API-4 migration runs",
+      "status": "pending",
+      "owner": "you",
+      "blocked_by": [
+        "API-4"
+      ],
+      "note": "GATE: a human deploy. If the migration lands before the formatter ships, staging renders raw cents as dollars. Nothing in git records whether this happened — only this row does.",
+      "ref": "ledger.md",
+      "sec": "API-4"
+    },
+    {
+      "id": "API-5",
+      "module": "API",
+      "type": "round",
+      "title": "Server-side monthly aggregate for the charts",
+      "status": "pending",
+      "drafted": false,
+      "owner": "code",
+      "note": "Charts compute client-side from the full transaction list; won't scale past ~5k rows. Needs a design.md §5 change first.",
+      "ref": "ledger.md",
+      "sec": "API-5"
+    },
+    {
+      "id": "UI-9",
+      "module": "Web",
+      "type": "round",
+      "title": "Bulk-edit transactions",
+      "status": "deferred",
+      "drafted": false,
+      "owner": "code",
+      "note": "PARKED: no user has asked for it, and it complicates the optimistic-save path in the drawer. Revisit if support tickets show manual re-categorisation in bulk.",
+      "ref": "ledger.md",
+      "sec": "UI-9"
+    },
+    {
+      "id": "DOC-DESIGN",
+      "module": "Cross-cutting",
+      "type": "doc",
+      "title": "Fold the charts scaling limit into design.md §5",
+      "status": "pending",
+      "owner": "coordinator",
+      "note": "Coordinator job, not a round. Blocks API-5 being drafted — lock the spec, then implement.",
+      "ref": "../docs/current-build.md",
+      "sec": "Charts"
+    }
+  ]
+}

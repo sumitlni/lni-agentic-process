@@ -1,8 +1,8 @@
 # Integration: generic (Makefile + git hooks) — for local LLMs or any tool
 
 No Claude-specific features. This wires the same `scripts/` into a Makefile and a git pre-commit hook,
-so the method works with a local model behind any agent CLI, a different agent, or a human at a
-terminal.
+so the method works with a local model behind any agent CLI, a different agent, or just you at a
+terminal. I keep this path working deliberately — I don't want the method to depend on one vendor.
 
 ## Install
 

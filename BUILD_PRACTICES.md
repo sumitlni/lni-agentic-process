@@ -1,11 +1,12 @@
 # Agentic Build Practices — the method
 
-A model- and tool-agnostic way to build software with coding agents. This document is the *method*;
-everything project-specific (folder names, checks, hard rules, file paths, budgets) lives in
-`CONFIGURE.md`. Read this once; keep `CONFIGURE.md` open while you adopt.
+A model- and tool-agnostic way to build software with coding agents. This is the method I arrived at
+building my own products, with everything specific to those products stripped out — folder names,
+checks, hard rules, file paths and budgets all live in `CONFIGURE.md`. Read this once; keep
+`CONFIGURE.md` open while you adopt.
 
 Throughout, **"agent"** means whatever is doing the work — Claude Code, Cowork, a local model behind
-an agent CLI, or a human following the same steps. Nothing here requires a specific LLM.
+an agent CLI, or you following the same steps. Nothing here requires a specific LLM.
 
 ---
 
@@ -141,9 +142,9 @@ from the round's folder. It mechanizes what §4 describes so nobody has to remem
    append a paragraph).
 3. Recent rounds → keep the last N; archive older.
 4. Task file → delete shipped items; keep open / human-pending / surfaced.
-5. Reconcile any rollup (see §8) **and** the folder's task file in the same pass, so the two never
-   drift.
-6. Presence board → set this folder's row idle.
+5. Status board (§9) → mark the round `done` in the JSON **in the same pass that writes the ledger
+   entry**, then re-render + `--check`. The item leaves the rendered board automatically.
+6. Presence board (§8) → set this folder's row idle.
 7. Size check (after) — confirm the files held or shrank.
 
 An agent runs this as its close-out step (it's in the round-prompt template + the boot reminder); a
@@ -151,22 +152,156 @@ budget guard nudges if it's skipped. This is the piece that keeps the whole syst
 
 ---
 
-## 8. Presence board (and an optional status rollup)
+## 8. The presence board is a LOCK, not a status board
 
-- **Presence board** — a single small file, one row per folder, with status (`idle` / `in progress`),
-  round #, and a timestamp. An implementer sets its own row `in progress` at round start and `idle` at
-  end. The coordinator checks it before editing any prompt/spec a running session reads. Advisory, not
-  a lock — never auto-expire a row; if one looks stale, ask the human.
-- **Optional: a machine-owned status rollup.** When you're tracking rounds across several folders, a
-  single `status.json` (+ a tiny local viewer) keyed by round — each item carrying a `ref` pointer to
-  its detail — keeps the per-folder progress files thin by owning the cross-folder state in one place.
-  If you adopt it, **reconcile both layers in the same pass** (close-round step 5): set the item's
-  status in the rollup *and* tick the matching entry in the owning folder's task file. Skip it while a
-  simple presence board + ledger stays legible.
+A single small file (`current.md`), one row per folder, with a status (`idle` / `IN PROGRESS`), the
+round, and a timestamp. An implementer sets **its own row** `IN PROGRESS` at round start and `idle` at
+end — the one shared file it may write. The coordinator checks it before editing any prompt or spec a
+running session reads. Advisory, not a hard lock — never auto-expire a row; if one looks stale, ask.
+
+**Do not merge this with the status board (§9).** They answer different questions and have different
+writers: the presence board answers *"is this folder safe to touch right now?"* and is written by the
+**implementer**; the status board answers *"what is the state of the work?"* and is written by the
+**coordinator**. Collapsing them puts two writers on one file — the concurrency bug that makes a
+presence lock useless.
+
+Keep the rows **one line**. Mine drifted into 1,000-character round summaries pasted into the
+"Started" column. That is narration, and narration belongs in the progress file and the ledger. *A
+lock you have to scroll is a lock nobody checks.*
 
 ---
 
-## 9. Hard rules (you fill these in)
+## 9. Status management — two KINDS of status, one source, generated views
+
+The single most useful thing I learned about tracking work: **there are two kinds of status, and
+conflating them is what rots a tracker.**
+
+**WORK (rounds) is ephemeral.** When a round ships, its completion is already fully recorded — in the
+code, in git, in the ledger. So the **rendered board drops it**: the board shows only work that is
+still real, and the file a session reads at boot cannot fill up with things that no longer matter. The
+item stays in the *store* as history; it just stops being *shown*. Delete-on-ship applies to the
+**view**, not the store.
+
+**GATES are durable.** "Engine tagged v0.10.0." "Migration 0004 applied to staging but not prod."
+"Store approved build 42." These are facts about the world — human-gated, external, **with no commit
+and no code to grep**. Delete one and it is simply gone; there is no other copy. Gates must be
+**stored**, with a state and a date, and stay visible until they reach a terminal state.
+
+The trap is treating all status as one kind. Delete-on-ship applied to a gate loses the only record
+you had. Accumulate-forever applied to a round produces the lie described at the end of this section.
+
+### The mechanism: one source, generated views
+
+**One JSON file is the single source of truth** — every round and every gate. Each item carries
+`id, module, type, title, status, owner, note, ref, sec` (+ optional `blocked_by`, `drafted`). `type`
+is what separates the two kinds: `round` (work) vs `ops` / `launch` (gates); `doc` for the
+coordinator's own jobs.
+
+**Everything you read is GENERATED and marked `DO NOT EDIT`:**
+
+| command | what it does |
+|---|---|
+| `python3 status.py` | serves the editable dashboard; click a badge to change a status |
+| `python3 status.py --check` | **validates the board; non-zero exit** |
+| `python3 status.py --render` | regenerates the markdown board (`queue.md`) |
+| `python3 status.py --render --check-sync` | fails if the board is stale vs the JSON |
+
+The rendered board is committed so sessions read it at boot without running anything; a status change
+via the dashboard re-renders it automatically, so the two cannot drift. The tooling ships in
+`tools/status/` and is project-agnostic — `project`, `subtitle`, and `modules` come from the JSON, so
+the same files drop into any repo unchanged.
+
+**Never hand-maintain a markdown board *and* a JSON file.** That is two copies of one fact — the
+disease, not the cure. Prose that matters (why an item is parked, the hazard on a gate) lives in the
+item's `note` field and is *rendered*; it is never retyped into the markdown.
+
+### Dependencies are a FIELD, not prose
+
+`blocked_by: [ids]`, and **blocked is DERIVED, never stored** — an item is blocked when any blocker
+isn't `done`, so the flag cannot go stale. The dashboard refuses to mark a blocked item `active`: it
+should not let you lie to yourself about what you can work on. A "ready to go" list answers the only
+question that matters most mornings — *what can I actually start right now?*
+
+I found, on a real board, a note reading *"device QA needs OPS-5 and OPS-4, then commit"* — a hard
+dependency, stored as **prose**, on an item the dashboard was cheerfully showing as actionable. OPS-4
+was still pending. **If a fact governs what you can do next, it needs a field and a
+check, not a sentence.**
+
+### The part that makes it work: the script must CHECK, not just render
+
+A tracker nobody verifies is a rumour. Rendering a dashboard over an unchecked file just renders the
+lie faithfully, in colour. So `--check` fails loudly on:
+
+- a blocker that doesn't resolve, and dependency **cycles**;
+- an item marked `active` while blocked, or `done` while still blocked;
+- a **drafted round whose prompt file doesn't exist on disk**;
+- a `deferred` item with **no stated reason** (if you can't say why it waits, it isn't real work);
+- duplicate ids;
+- a presence-board row saying `IN PROGRESS` with no active round — **the reverse direction, which is
+  the drift nobody thinks to look for**.
+
+Then `--check-sync` guarantees the generated views match the source. That is what makes "generated"
+safe: *a generated file nobody regenerates is just a stale file with extra steps.*
+
+**Write the checker's negative tests.** Feed it a dangling blocker, a cycle, a missing prompt file —
+and confirm it exits non-zero on each. My first run of this checker produced two false positives (it
+matched the presence board's own documentation prose for "IN PROGRESS", and rejected a `ref` pointing
+at a directory). *A validator you haven't tried to break is just another unverified file.*
+
+### Verify against the CODE, not the board
+
+Before declaring a round pending — or done — check whether the thing it asks for **already exists**.
+Work that ships *inside a neighbouring round* is invisible to any tracker, because no tracker records
+what it was never told. I found a round sitting marked "drafted" for five days after it had shipped;
+a `grep` for the component it was supposed to create found it, complete, with the round's own name in
+the comment. No status file can catch that. Only reading the code can.
+
+### The rules
+
+- **One writer per file.** The coordinator edits the JSON — when it drafts a round, and on every
+  verification pass. You flip statuses from the dashboard (which writes the same file). **Nobody edits
+  the rendered board or the dashboard HTML.** (The presence board is a *different* file with a
+  different writer — see §8. Don't merge them.)
+- **Ship = mark `done` in the JSON, in the same pass that writes the ledger entry.** The item then
+  leaves the *rendered* board automatically. It is retained in the JSON — that is the history, and for
+  a gate it is the *only* record that exists.
+- **Every blocked or parked item states its blocker or its reason** — `blocked_by` for the first,
+  `note` for the second, and `--check` **fails** if a parked item has no reason. This is not
+  bookkeeping: one parked item on my board hid a "Validate" button that performs a **real data
+  import** against an un-deployed backend. A row reading only "deferred" is an invitation for someone
+  to pick it up.
+- **Sections are states, not epics.** LIVE / READY / BLOCKED / GATES / BACKLOG / PARKED. Group by
+  *what you can act on*, not by *what it belongs to* — an epic grouping is what lets shipped and
+  unshipped work sit adjacent and look alike.
+- **A dashboard is only as good as the check underneath it.** It is safe here *because* `--check` runs
+  against the same JSON and fails loudly — not because it is pretty.
+
+### The failure this replaced
+
+Worth reading before you decide you don't need any of this. I ran a combined status/archive ledger
+for months. By the time I looked hard at it, it was 2,504 lines and **actively lying**:
+
+- a grep for pending items returned **21 rounds. Three were real.** The other 18 had shipped.
+- The cause was mechanical, not careless: ship-time notes were **appended as new sections** rather than
+  flipping the original checkbox. Every round then existed **twice, in two states**, and a grep found
+  the stale one first.
+- One round still read "ready to run" while I was actively debugging the very page it described.
+
+This is the **same failure as duplicated code**: one fact, two copies, no test. I'd spent the
+preceding weeks pulling exactly that out of a codebase — and was running my own process on it.
+**A status field that must be kept in sync by discipline will drift, in prose exactly as in code.** The
+fix is the same in both places: keep one copy, and test it.
+
+### The ledger, afterwards
+
+The ledger keeps its real job — newest-at-top, one entry per round: scope, decisions, the bugs it
+killed, the rulings that settled an argument. **Read it to understand *why* something is the way it
+is; never to find out what to do next.** Open it with a banner saying so, because its historical prose
+still contains sentences that were true when written and are lies now.
+
+---
+
+## 10. Hard rules (you fill these in)
 
 A few decisions should be **hard rules** — non-negotiable, override default behavior, no relitigation
 without changing the source of truth. They exist because they're easy to violate by accident and
@@ -174,13 +309,13 @@ expensive to clean up. Keep them few, absolute, and read on every boot. Define y
 Two that nearly every project wants:
 
 - **The human owns the dangerous verbs.** Agents never `git push` and never run deploys/releases —
-  under any circumstances. Local commits/diffs are fine; pushing and shipping are the human's job.
+  under any circumstances. Local commits/diffs are fine; pushing and shipping stay with you.
 - **Designate a source of truth** and forbid relitigating locked decisions inside a round; changes go
   through the decision record + the source-of-truth doc first.
 
 ---
 
-## 10. Adopt it
+## 11. Adopt it
 
 See `docs/ADOPTING.md` for a step-by-step, and `example/` for a small filled-in instance. The shortest
 path: fill `CONFIGURE.md`, drop in `scripts/`, wire one integration (`integrations/claude-code/` or

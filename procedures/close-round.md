@@ -1,7 +1,7 @@
 # Procedure: close-round
 
 Run at the **end of a verified round**, from the round's folder, to keep the continuation files lean.
-This is a plain procedure — any agent or a human can follow it. On Claude Code it's packaged as a
+This is a plain procedure — any agent, or you, can follow it. On Claude Code it's packaged as a
 skill (`integrations/claude-code/`); with the generic integration it's `make close-round`. It does the
 same steps either way.
 
@@ -28,15 +28,30 @@ Names and budgets below come from your `CONFIGURE.md`.
    captures), and un-rolled-up "surfaced to coordinator" notes. If unsure whether an item is still
    open, ask — don't retain by default.
 
-5. **Reconcile the layers (if you use a status rollup).** In the same pass, set this round's item
-   `status` in the rollup **and** tick/annotate the matching entry in this folder's task file, so the
-   rollup and the detail never drift. If you have no rollup, skip.
+5. **Status board + ledger — in the SAME pass** (`BUILD_PRACTICES.md` §9). **Ship = mark the item
+   `done` in `status.json`, in the same pass that writes the ledger entry.** Then re-render and
+   validate:
 
-6. **Ledger + presence board.**
-   - If you're the **coordinator**, add/close this round's one-line ledger entry.
-   - If you're the **implementer**, you don't edit coordinator-owned files — instead leave a one-line
-     "surfaced to coordinator" note with the ledger entry, and set only **your folder's row** in the
-     presence board to `idle`.
+   ```
+   python3 status.py --render      # the shipped round leaves the rendered board automatically
+   python3 status.py --check       # non-zero exit if the board is now incoherent
+   ```
+
+   The item is **retained** in `status.json` — that's the history, and for a gate it's the only record
+   that exists. Don't delete it, and don't hand-edit `queue.md`.
+
+   **Before you mark it done, verify against the CODE, not the board.** Check the thing the round asked
+   for actually exists in the source. A round is not verified because a session said so.
+
+   If the round surfaced a new **gate** (a deploy, a migration, a tag, an approval — anything human or
+   external that no commit records), add it to `status.json` now, with an owner and a `note`. If you
+   don't, there will be no record of it anywhere.
+
+6. **Presence board.**
+   - If you're the **implementer**, you don't edit coordinator-owned files (`status.json`, the ledger)
+     — leave a one-line "surfaced to coordinator" note carrying the ledger entry and any new gate, and
+     set only **your folder's row** in the presence board to `idle`.
+   - If you're the **coordinator**, land the ledger entry and the `status.json` changes yourself.
 
 7. **Size check (after).** Re-run `scripts/check-budget.sh`. Confirm both files held or shrank. If the
    progress `State` is still over budget, the leftover prose is design detail that belongs in the

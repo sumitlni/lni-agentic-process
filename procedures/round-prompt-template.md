@@ -22,7 +22,7 @@ WORK TO DO
 
 MUST NOT
 - <tempting-but-wrong changes>, <out-of-scope folders>, <anything that violates a hard rule>.
-- git push; run any deploy/release command. (Leave changes in the working tree for the human.)
+- git push; run any deploy/release command. (Leave changes in the working tree for you to review.)
 
 VERIFY
 - <folder checks: tests/build/lint green> + <the manual demo/acceptance checklist>.

@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build Status</title>
+<!--
+  Cross-module status dashboard. DATA lives in status.json (single source of truth);
+  served + made writable by status.py. Cowork edits status.json directly (BUILD_PRACTICES).
+
+  PORTABLE: `project`, `subtitle` and `modules` come from status.json — nothing about a specific
+  product is hard-coded here, so this file drops into any repo unchanged.
+
+  Run:  python3 status.py   (in this Strategy/ folder)  → opens the editable dashboard.
+  Click a status badge → pick a new status. The row updates in place (no re-sort) and writes back
+  to status.json; queue.md is re-rendered automatically so the two can never drift.
+
+  BLOCKED is DERIVED from `blocked_by`, never stored — so it cannot go stale. An item whose blockers
+  aren't all `done` shows as blocked, and the server REFUSES to mark it active. The dashboard should
+  not let you lie to yourself about what you can work on.
+-->
+<style>
+  :root{
+    --bg:#14110e; --panel:#1f1b16; --panel2:#272118; --line:#3a3026;
+    --ink:#efe7da; --muted:#a89a85; --gold:#d4af37; --gold-dim:#8a7320;
+    --done:#5a9e6f; --active:#d4af37; --pending:#c9722f; --deferred:#6b6256; --blocked:#a34b4b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--gold)}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 80px}
+  header h1{font-size:22px;margin:0 0 2px;letter-spacing:.2px}
+  header .sub{color:var(--muted);font-size:13px}
+  .gold{color:var(--gold)}
+  .notice{display:none;margin:16px 0;padding:12px 14px;border:1px solid var(--gold-dim);border-radius:10px;background:#241f12;color:var(--ink);font-size:13.5px}
+  .notice code{background:#000;color:var(--gold);padding:2px 6px;border-radius:5px}
+  .notice.bad{border-color:var(--blocked);background:#2a1616}
+  .notice ul{margin:6px 0 0;padding-left:18px} .notice li{margin:2px 0}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:10px;margin:20px 0 8px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .card .n{font-size:26px;font-weight:600;line-height:1}
+  .card .l{font-size:12px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.6px}
+  .card.bucket{border-color:var(--gold-dim);background:linear-gradient(180deg,#2a2114,#211b13)}
+  .card.bucket .n{color:var(--gold)}
+  .card.go{border-color:#34543f;background:linear-gradient(180deg,#182a1e,#141f18)}
+  .card.go .n{color:var(--done)}
+  .bar{height:8px;border-radius:6px;background:var(--panel2);overflow:hidden;display:flex;margin:14px 0 4px;border:1px solid var(--line)}
+  .bar > i{display:block;height:100%}
+  .filters{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 6px;align-items:center}
+  .chip{background:var(--panel);border:1px solid var(--line);color:var(--muted);padding:5px 11px;border-radius:999px;cursor:pointer;font-size:13px;user-select:none}
+  .chip:hover{border-color:var(--gold-dim);color:var(--ink)}
+  .chip.on{background:var(--gold);color:#221c10;border-color:var(--gold);font-weight:600}
+  .filters .lbl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.6px;margin-right:2px}
+  .sep{flex-basis:100%;height:0}
+  .group{margin-top:22px}
+  .group h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--gold);border-bottom:1px solid var(--line);padding-bottom:6px;margin:0 0 8px;display:flex;justify-content:space-between}
+  .group h2 .cnt{color:var(--muted);font-weight:400;letter-spacing:0}
+  .item{display:grid;grid-template-columns:130px 1fr auto;gap:12px;align-items:start;padding:11px 12px;border:1px solid var(--line);border-left:3px solid var(--line);border-radius:8px;background:var(--panel);margin-bottom:7px;transition:border-color .15s}
+  .item.s-done{border-left-color:var(--done)} .item.s-active{border-left-color:var(--active)}
+  .item.s-pending{border-left-color:var(--pending)} .item.s-deferred{border-left-color:var(--deferred);opacity:.82}
+  .item.is-blocked{border-left-color:var(--blocked)}
+  .item.flash{box-shadow:0 0 0 2px var(--gold) inset}
+  .id{font-variant-numeric:tabular-nums;font-weight:600;color:var(--muted);font-size:12.5px;padding-top:1px;word-break:break-word}
+  .ttl{font-weight:500}
+  .meta{color:var(--muted);font-size:12.5px;margin-top:3px}
+  .blk{margin-top:5px;font-size:12px;color:#e0a3a3}
+  .blk b{color:#f0caca;font-weight:600}
+  .ref{margin-top:4px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .ref a{color:var(--gold-dim);text-decoration:none;border-bottom:1px dotted var(--gold-dim)}
+  .ref a:hover{color:var(--gold)}
+  .ref .sec{color:var(--muted)}
+  .badges{display:flex;flex-direction:column;align-items:flex-end;gap:5px;white-space:nowrap}
+  .b{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid;text-transform:uppercase;letter-spacing:.4px}
+  .b.done{color:var(--done);border-color:#34543f;background:#16241b}
+  .b.active{color:var(--active);border-color:#5a4c1f;background:#241f12}
+  .b.pending{color:var(--pending);border-color:#5a3a22;background:#241811}
+  .b.deferred{color:var(--muted);border-color:var(--line);background:transparent}
+  .b.blocked{color:#e08a8a;border-color:#5c2c2c;background:#2a1616}
+  .b.you{color:#221c10;background:var(--gold);border-color:var(--gold);font-weight:700}
+  .b.code{color:var(--muted);border-color:var(--line);background:transparent}
+  .b.cowork{color:#9fb8d4;border-color:#33465c;background:#161d26}
+  .b.type{color:var(--muted);border-color:var(--line);background:transparent;text-transform:none;letter-spacing:0}
+  .b.click{cursor:pointer;position:relative} .b.click:hover{filter:brightness(1.3)} .b.click::after{content:" ▾";opacity:.6}
+  .empty{color:var(--muted);font-style:italic;padding:8px 2px}
+  .menu{position:absolute;z-index:50;background:var(--panel2);border:1px solid var(--gold-dim);border-radius:9px;padding:5px;box-shadow:0 10px 28px rgba(0,0,0,.55);min-width:130px}
+  .menu .hd{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);padding:3px 9px 5px}
+  .menu button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;color:var(--ink);padding:7px 10px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px;text-transform:capitalize}
+  .menu button:hover{background:var(--panel)}
+  .menu button.cur{color:var(--gold);font-weight:600}
+  .menu .dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+  .menu .ck{margin-left:auto;color:var(--gold)}
+  footer{margin-top:34px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="gold" id="proj">…</span> — Build Status</h1>
+    <div class="sub"><span id="subtitle"></span> · <span id="updated"></span></div>
+  </header>
+
+  <div class="notice" id="notice"></div>
+  <div class="cards" id="cards"></div>
+  <div class="bar" id="bar"></div>
+  <div class="filters" id="filters"></div>
+  <div id="board"></div>
+
+  <footer>
+    <div><strong class="gold">In your bucket</strong> = next action is yours. <strong>Code</strong> = a Claude Code round to run. <strong>Cowork</strong> = orchestrator work.
+      <strong class="gold">Go</strong> = unblocked and ready to start right now.</div>
+    <div class="legend">
+      <span><i style="background:var(--done)"></i>Done</span>
+      <span><i style="background:var(--active)"></i>Active</span>
+      <span><i style="background:var(--pending)"></i>Pending</span>
+      <span><i style="background:var(--blocked)"></i>Blocked (derived)</span>
+      <span><i style="background:var(--deferred)"></i>Deferred</span>
+    </div>
+    <div style="margin-top:10px">Single source of truth: <code>status.json</code>. <b>BLOCKED is derived from <code>blocked_by</code>, never stored</b> — so it can't go stale, and the server refuses to mark a blocked item active. Every status change re-renders <code>queue.md</code>. Validate with <code>python3 status.py --check</code>.</div>
+  </footer>
+</div>
+
+<script>
+const STATUS_ORDER = ["active","pending","done","deferred"];
+const STATUSES = ["pending","active","done","deferred"];
+const filt = {status:"all", owner:"all", module:"all"};
+let DOC = {project:"", subtitle:"", last_updated:"", modules:[], items:[]};
+let MODULES = [];
+let BY_ID = {};
+let EDITABLE = (location.protocol !== "file:");
+let MENU = null;
+
+const el = (h)=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstChild;};
+const esc = (s)=> (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// BLOCKED is DERIVED — an item is blocked when any id in blocked_by isn't done. Never stored, so it
+// cannot drift out of sync with the thing it depends on.
+function unmetBlockers(i){
+  return (i.blocked_by||[]).filter(b=>{ const d=BY_ID[b]; return !d || d.status!=="done"; });
+}
+const isBlocked = (i)=> (i.status==="pending"||i.status==="active") && unmetBlockers(i).length>0;
+// "Go" = you could start it this second: a drafted round, pending, nothing in its way.
+const isGo = (i)=> i.type==="round" && i.status==="pending" && i.drafted && !isBlocked(i);
+
+function load(){
+  fetch('status.json',{cache:'no-store'})
+    .then(r=>r.json()).then(j=>{
+      DOC=j; BY_ID={}; (j.items||[]).forEach(i=>BY_ID[i.id]=i);
+      MODULES = j.modules || [...new Set((j.items||[]).map(i=>i.module))];
+      document.title = (j.project||"Build")+" — Build Status";
+      document.getElementById('proj').textContent = j.project||"Build";
+      document.getElementById('subtitle').textContent = j.subtitle||"";
+      render(); runCheck();
+    })
+    .catch(()=>{
+      const n=document.getElementById('notice'); n.style.display='block'; n.className='notice bad';
+      n.innerHTML="Couldn't load <code>status.json</code> — open this through the local server:<br>&nbsp;&nbsp;<code>cd Strategy &amp;&amp; python3 status.py</code>";
+    });
+}
+
+// Surface validation errors ON the board. A tracker nobody verifies is a rumour.
+function runCheck(){
+  if(!EDITABLE) return;
+  fetch('/check',{cache:'no-store'}).then(r=>r.json()).then(j=>{
+    const all=[...(j.errors||[]).map(e=>['ERROR',e]),...(j.warnings||[]).map(w=>['warn',w])];
+    if(!all.length) return;
+    const n=document.getElementById('notice'); n.style.display='block';
+    n.className = (j.errors||[]).length ? 'notice bad' : 'notice';
+    n.innerHTML = "<b>Board check</b> — "+(j.errors||[]).length+" error(s), "+(j.warnings||[]).length+" warning(s):<ul>"
+      + all.map(([k,m])=>`<li>${k==='ERROR'?'<b>ERROR</b>':'warn'} — ${esc(m)}</li>`).join('') + "</ul>";
+  }).catch(()=>{});
+}
+
+function passes(it){
+  if(filt.status==="go"){ if(!isGo(it)) return false; }
+  else if(filt.status==="blocked"){ if(!isBlocked(it)) return false; }
+  else if(filt.status!=="all" && it.status!==filt.status) return false;
+  if(filt.owner!=="all" && it.owner!==filt.owner) return false;
+  if(filt.module!=="all" && it.module!==filt.module) return false;
+  return true;
+}
+
+function updateSummary(){
+  const items = DOC.items||[];
+  const c={done:0,active:0,pending:0,deferred:0}; items.forEach(i=>{ if(c[i.status]!==undefined) c[i.status]++; });
+  const bucket = items.filter(i=>i.owner==="you" && i.status!=="done").length;
+  const go = items.filter(isGo).length;
+  const blocked = items.filter(isBlocked).length;
+  const total = items.length||1;
+  document.getElementById('updated').textContent = "updated "+(DOC.last_updated||"?")+(EDITABLE?"":" · read-only");
+  document.getElementById('cards').innerHTML =
+    card(items.length,"Total")+card(c.done,"Done")+card(c.active,"Active")+card(blocked,"Blocked")+
+    `<div class="card go"><div class="n">${go}</div><div class="l">Ready to go</div></div>`+
+    `<div class="card bucket"><div class="n">${bucket}</div><div class="l">In your bucket</div></div>`;
+  const seg=(n,col)=> n? `<i style="width:${n/total*100}%;background:${col}"></i>`:'';
+  document.getElementById('bar').innerHTML =
+    seg(c.done,'var(--done)')+seg(c.active,'var(--active)')+seg(c.pending,'var(--pending)')+seg(c.deferred,'var(--deferred)');
+}
+
+function render(){
+  updateSummary();
+  const items = DOC.items||[];
+  const f=document.getElementById('filters'); f.innerHTML='';
+  f.append(mk('lbl','Status'));
+  [["all","All"],["go","▶ Ready to go"],["blocked","Blocked"],["active","Active"],["pending","Pending"],["done","Done"],["deferred","Deferred"]]
+    .forEach(([v,l])=>f.append(chip(l,'status',v)));
+  f.append(el('<span class="sep"></span>'));
+  f.append(mk('lbl','Owner'));
+  [["all","All"],["you","In my bucket"],["code","Code rounds"],["cowork","Cowork"]].forEach(([v,l])=>f.append(chip(l,'owner',v)));
+  f.append(el('<span class="sep"></span>'));
+  f.append(mk('lbl','Module'));
+  ["all",...MODULES].forEach(m=>f.append(chip(m,'module',m)));
+
+  const board=document.getElementById('board'); board.innerHTML='';
+  const groups = filt.module==="all" ? MODULES : [filt.module];
+  let shown=0;
+  groups.forEach(m=>{
+    const list = items.filter(i=>i.module===m && passes(i))
+      .sort((a,b)=>{
+        const ga=isGo(a)?0:1, gb=isGo(b)?0:1;           // ready-to-go floats to the top
+        if(ga!==gb) return ga-gb;
+        return STATUS_ORDER.indexOf(a.status)-STATUS_ORDER.indexOf(b.status);
+      });
+    if(!list.length) return;
+    shown+=list.length;
+    const g=el(`<div class="group"><h2>${esc(m)} <span class="cnt">${list.length}</span></h2></div>`);
+    list.forEach(i=>g.append(row(i)));
+    board.append(g);
+  });
+  if(!shown) board.append(el('<div class="empty">Nothing matches these filters.</div>'));
+}
+
+function card(n,l){return `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`;}
+function mk(cls,txt){return el(`<span class="${cls}">${txt}</span>`);}
+function chip(label,key,val){
+  const c=el(`<span class="chip${filt[key]===val?' on':''}">${esc(label)}</span>`);
+  c.onclick=()=>{filt[key]=val;render();}; return c;
+}
+function row(i){
+  const blocked = isBlocked(i);
+  const owner = i.owner==="you"?'<span class="b you">You</span>'
+              : i.owner==="code"?'<span class="b code">Code</span>'
+              : i.owner==="cowork"?'<span class="b cowork">Cowork</span>':'';
+  const typeBadge = i.type!=="round"?`<span class="b type">${esc(i.type)}</span>`:'';
+  const blkLine = blocked ? `<div class="blk">⛔ blocked by ${unmetBlockers(i).map(b=>
+      BY_ID[b] ? `<b>${esc(b)}</b> — ${esc(BY_ID[b].title)}` : `<b>${esc(b)}</b> ⚠ unknown id`).join(' · ')}</div>` : '';
+  const goMark = isGo(i) ? '<span class="b done">▶ go</span>' : '';
+  const it=el(`<div class="item s-${i.status}${blocked?' is-blocked':''}" data-id="${esc(i.id)}">
+    <div class="id">${esc(i.id)}</div>
+    <div>
+      <div class="ttl">${esc(i.title)}</div>
+      ${i.note?`<div class="meta">${esc(i.note)}</div>`:''}
+      ${blkLine}
+      ${i.ref?`<div class="ref">📄 <a href="${esc(i.ref)}" class="reflink" title="open in editor">${esc(i.ref)}</a>${i.sec?` <span class="sec">${esc(i.sec)}</span>`:''}</div>`:''}
+    </div>
+    <div class="badges">
+      <span class="b ${blocked?'blocked':i.status}${EDITABLE?' click':''}" title="${EDITABLE?'change status':''}">${blocked?'blocked':esc(i.status)}</span>
+      ${goMark}${owner}${typeBadge}
+    </div>
+  </div>`);
+  if(EDITABLE){
+    const badge = it.querySelector('.badges .b');
+    badge.onclick=(e)=>{ e.stopPropagation(); openMenu(i, badge); };
+    const rl = it.querySelector('.reflink');
+    if(rl) rl.onclick=(e)=>{ e.preventDefault(); openInEditor(i.ref, i.sec); };
+  }
+  return it;
+}
+
+function closeMenu(){ if(MENU){MENU.remove(); MENU=null;} }
+function openMenu(item, badge){
+  closeMenu();
+  const m = el('<div class="menu"><div class="hd">Set status</div></div>');
+  STATUSES.forEach(s=>{
+    const cur = s===item.status;
+    const b = el(`<button class="${cur?'cur':''}"><span class="dot" style="background:var(--${s})"></span>${s}${cur?'<span class="ck">✓</span>':''}</button>`);
+    b.onclick=(e)=>{ e.stopPropagation(); closeMenu(); if(!cur) setStatus(item, s, badge); };
+    m.append(b);
+  });
+  document.body.append(m);
+  const r = badge.getBoundingClientRect();
+  let left = window.scrollX + r.right - m.offsetWidth;
+  left = Math.max(window.scrollX+8, Math.min(left, window.scrollX + document.documentElement.clientWidth - m.offsetWidth - 8));
+  m.style.top = (window.scrollY + r.bottom + 5)+'px';
+  m.style.left = left+'px';
+  MENU = m;
+}
+document.addEventListener('click', closeMenu);
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeMenu(); });
+window.addEventListener('resize', closeMenu);
+
+function setStatus(item, s, badge){
+  fetch('/api/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:item.id,status:s})})
+    .then(r=> r.json().then(j=> r.ok ? j : Promise.reject(j)))
+    .then(res=>{
+      item.status = s;
+      if(res.last_updated) DOC.last_updated = res.last_updated;
+      const rowEl = badge.closest('.item');
+      const blocked = isBlocked(item);
+      rowEl.className = 'item s-'+s+(blocked?' is-blocked':'');
+      badge.className = 'b '+(blocked?'blocked':s)+' click';
+      badge.textContent = blocked?'blocked':s;
+      updateSummary(); runCheck();          // a status change can unblock others — re-check
+      rowEl.classList.add('flash');
+      setTimeout(()=>rowEl.classList.remove('flash'), 600);
+    })
+    .catch(err=>{
+      const n=document.getElementById('notice'); n.style.display='block'; n.className='notice bad';
+      n.innerHTML = (err && err.error)
+        ? "Refused — "+esc(err.error)+"."          // e.g. can't mark a BLOCKED item active
+        : "Couldn't save — is the server running? &nbsp;<code>python3 status.py</code>";
+    });
+}
+function openInEditor(rel, sec){
+  let u = '/open?path='+encodeURIComponent(rel);
+  if(sec) u += '&sec='+encodeURIComponent(sec);
+  fetch(u)
+    .then(r=> r.json().catch(()=>({})).then(j=> r.ok ? j : Promise.reject(j)))
+    .then(j=>{ if(j && j.note){ const n=document.getElementById('notice'); n.style.display='block'; n.className='notice'; n.innerHTML="📄 Opened — "+esc(j.note)+"."; } })
+    .catch(err=>{
+      const n=document.getElementById('notice'); n.style.display='block'; n.className='notice bad';
+      n.innerHTML = "Couldn't open <code>"+esc(rel)+"</code> in your editor"
+        + (err && err.error ? " — "+esc(err.error) : "")
+        + ". Try: <code>python3 status.py --editor \"AppName\"</code>.";
+    });
+}
+load();
+</script>
+</body>
+</html>

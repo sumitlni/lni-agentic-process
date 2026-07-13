@@ -1,6 +1,7 @@
 # Adopting Agentic Build Practices
 
-A step-by-step to go from zero to running rounds. Budget ~30 minutes for the first pass.
+A step-by-step to go from zero to running rounds. Budget about 30 minutes for the first pass — most
+of it is describing your project once, in `CONFIGURE.md`, so you never have to describe it again.
 
 ## 1. Read the method
 
@@ -35,7 +36,26 @@ bash ../scripts/check-budget.sh          # sizes
 bash ../scripts/boot-read-order.sh        # your READ ORDER prints
 ```
 
-## 4. Wire one integration
+## 4. Set up the status board
+
+Copy `tools/status/` (`status.py` + `STATUS.html`) into your process folder — one level below the repo
+root, e.g. `Strategy/`. Create `status.json` beside them; `example/Strategy/status.json` is a working
+starting point. Set `project`, `subtitle`, and `modules[]`, then add one item per round and one per
+**gate** (a deploy, a migration, a tag, an approval — anything human or external that no commit
+records).
+
+```
+cd Strategy
+python3 status.py --check     # validates: dangling blockers, cycles, parked-with-no-reason, …
+python3 status.py --render    # generates queue.md — commit it; never edit it
+python3 status.py             # the dashboard; click a badge to change a status
+```
+
+Two rules that make it worth having: **the coordinator is the only one who hand-edits `status.json`**,
+and **a shipped round is marked `done` in the same pass that writes the ledger entry** — it then leaves
+the rendered board on its own. Full reasoning in `BUILD_PRACTICES.md` §9.
+
+## 5. Wire one integration
 
 - **Claude Code / Cowork:** follow `integrations/claude-code/README.md` (copy `dot-claude/` → `.claude/`).
 - **Anything else (local LLM, other agent, manual):** follow `integrations/generic/README.md`
@@ -43,14 +63,14 @@ bash ../scripts/boot-read-order.sh        # your READ ORDER prints
 
 Both call the same scripts — pick whichever matches how you drive your agent. You can switch later.
 
-## 5. Set up the shared files
+## 6. Set up the shared files
 
 - Create the **presence board** (one row per folder; see `example/current.md`).
 - Create the **ledger** (one line per round).
 - Make sure each folder has its **progress** + **task** files, starting lean (a `State` heading with
   pointer lines, and an empty `Open` list). See `example/`.
 
-## 6. Run your first round
+## 7. Run your first round
 
 1. Draft the round prompt from `procedures/round-prompt-template.md`. Lock any spec/decision change
    first.
@@ -60,7 +80,7 @@ Both call the same scripts — pick whichever matches how you drive your agent. 
    continuation files and setting its presence row idle.
 4. The coordinator reviews, lands the ledger entry, and reconciles the files if needed.
 
-## 7. Keep it honest
+## 8. Keep it honest
 
 - If the progress `State` starts growing paragraphs, that's design detail leaking in — move it to the
   as-built doc, leave a pointer.

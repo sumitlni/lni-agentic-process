@@ -8,7 +8,7 @@ as "surfaced to Cowork" notes.
 - **UI — empty state for a filtered list with no matches.** Currently shows a blank table; add a
   "no transactions match this filter" row with a clear-filters link.
 - **HUMAN — deploy the UI-5 cents formatter to staging** before API-4's cents migration lands, so the
-  two match. (Waiting on the human; no code action.)
+  two match. (Waiting on you; no code action.)
 
 ## Surfaced to Cowork
 

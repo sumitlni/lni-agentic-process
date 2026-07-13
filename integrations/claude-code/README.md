@@ -1,7 +1,8 @@
 # Integration: Claude Code / Cowork
 
 Wires the method into Claude Code (and Cowork) via a skill + two hooks. All three just call the plain
-bash in `scripts/` — the logic is model-agnostic; this is only the wiring.
+bash in `scripts/` — the logic is model-agnostic; this is only the wiring. It's how I run it day to
+day, but nothing in the method depends on it.
 
 ## Install
 

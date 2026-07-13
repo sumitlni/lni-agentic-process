@@ -1,8 +1,9 @@
 # CONFIGURE — your instance layer
 
 Everything project-specific lives here (and in the `# ==== EDIT ME ====` blocks of `scripts/`). The
-method (`BUILD_PRACTICES.md`) never changes; this file is where your project's reality goes. Fill it
-in, keep it in your repo, and cite it from your root agent-instructions file.
+method (`BUILD_PRACTICES.md`) never changes; this file is where your project's reality goes. That
+split is the whole trick — it's what lets me share the method without shipping my products with it.
+Fill it in, keep it in your repo, and cite it from your root agent-instructions file.
 
 Copy this file, replace every `<…>`, and delete the guidance lines you don't need.
 
@@ -29,9 +30,23 @@ round in that folder):
 - **As-built reference (sectioned, read on demand):** `<path>`
 - **Decision records:** `<dir — e.g. docs/adr/>`
 - **Round prompts:** `<path>`
-- **Ledger (one line per round):** `<path>`
-- **Presence board:** `<path — e.g. current.md>`
-- **Status rollup (optional):** `<path or "none">`
+- **Ledger (one line per round — archive, carries NO status):** `<path>`
+- **Presence board (a LOCK, not a status board):** `<path — e.g. current.md>`
+
+## Status board (BUILD_PRACTICES §9)
+
+Drop `tools/status/` into your process folder and create `status.json` beside it.
+
+- **Source of truth:** `<path — e.g. Strategy/status.json>` (hand-edited only by the coordinator;
+  statuses flipped by you from the dashboard)
+- **Rendered board (GENERATED — never edit):** `<path — e.g. Strategy/queue.md>`
+- **Validator + dashboard:** `<path — e.g. Strategy/status.py + STATUS.html>`
+- **Modules** (the `modules[]` in your JSON — each item must belong to one):
+  `<e.g. Frontend, Backend, Cross-cutting>`
+- **Item types:** `round` = work (leaves the rendered board when done) · `ops` / `launch` = a **gate**
+  (human/external, no commit records it — stays visible until done) · `doc` = a coordinator job.
+
+Run `python3 status.py --check` in a git hook or CI; it exits non-zero so it can gate.
 
 ## Continuation files (per folder)
 
