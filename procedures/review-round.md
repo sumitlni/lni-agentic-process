@@ -29,9 +29,15 @@ Two rules, and that's all:
    | added a guard test that passes | check out the **pre-round** code and show the guard **FAILS** against it |
    | "the rule is enforced" | feed it a **violating input** and watch it reject |
    | "N tests green" | ask what the test compares against — if both sides are derivations, it guards nothing |
+   | a value/behaviour on a DEPLOYED surface | call the **live system** and read what it actually returns (check its build stamp first — `BUILD_PRACTICES.md` §11) |
 
    Never re-derive the round's own formula, never re-read its diff and nod along, and never accept
    "the tests pass" as proof of a rule.
+
+   **The exception: a *trivial* check needs no second route** — one fact any two readers compute
+   identically (does this route equal that literal string?). Don't manufacture ceremony for it. The
+   independent path is for everything with room to be wrong — which, with a mixed or local-model
+   implementer, is more than you'd think.
 
 3. **If there's no different route — say so, and ask.** It happens: the only check available is the one
    the round already ran (an authed environment you can't reach, hardware you don't have, a judgment

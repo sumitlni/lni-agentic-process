@@ -49,6 +49,16 @@ A **round** is a numbered, scoped change — the contract between coordination a
   so the implementer reads a stable spec.
 - **Split a round when scope grows:** keep the number for the smaller piece, add a letter suffix for
   the follow-up (Round 12 / Round 12A); track both.
+- **Draft a dependent round against the real tree, not one about to change.** If a round's shape depends
+  on an entity or contract a *predecessor* creates, capture its scope now but write the full prompt
+  *after* the predecessor lands — against the shipped shape, not a guess. Pre-writing it anchors it on
+  code that's about to move.
+- **Renames and sweeps: census the token's SENSES first; split on a hidden contract.** The same token is
+  often an entity in one place and a DOM property, a role name, or a coordinate in others — classify
+  every hit and find the shared-contract ones *before* touching, then confirm by running the consumer to
+  see what it actually reads. If a token you were told to rename turns out to be a shared-engine/contract
+  field, **prove it by running (not reading) and hand back an evidenced split — never a half-job.** A
+  blind find-replace corrupts the ones that only looked alike.
 - Prompts and their outcomes are recorded in a **ledger** (one line per round).
 
 ---
@@ -67,6 +77,14 @@ it's theatre, and worse than nothing: it launders a wrong answer into a verified
 It binds the **coordinator** hardest, since the coordinator reviews what the implementer produced. The
 last three rules bind the implementer too.
 
+**Two carve-outs, and only two.** Skip the independent path when the check is *trivial* — one fact any
+two readers compute identically (does this route equal that literal string?) — or when no independent
+route is feasible (last rule). Everything else gets the second path. And this matters **more**, not
+less, as you mix models: when the implementer might be a smaller local model, an independent check —
+ideally by a *different, stronger* agent — is your main defense against a confidently wrong result that
+reads as done. Cross-model review (one model implements, another verifies by a different route) is the
+mixed-LLM version of this rule.
+
 The coordinator's checklist for this lives in `procedures/review-round.md`.
 
 **The rules**
@@ -81,6 +99,11 @@ The coordinator's checklist for this lives in `procedures/review-round.md`.
   **FAIL against the pre-round code** — otherwise you haven't shown it can fail at all.
 - **Prefer running to reading.** Execute it headless and inspect the artifact it produces. Source tells
   you what someone *intended*; the artifact tells you what *happens*.
+- **Prefer the LIVE system to the code, once it's deployed.** Verify *behaviour on the running system* —
+  call the real endpoint, read what actually comes back — not the source that claims to produce it.
+  Source can be correct while the deploy that carries it is stale. This is the strongest independent path
+  there is: it clears every layer between the code and the user in one shot. (Corollary: make the running
+  system *tell you what it is* — see §11.)
 - **State the route you took.** A verification note must name the independent source it checked against.
   "Verified ✅" with no stated path is worth nothing, and shouldn't be accepted.
 - **If no independent route exists, say so and ask.** Sometimes the only check available is the one the
@@ -161,6 +184,10 @@ implementation references it.
 - Number them; **one file per decision** (e.g. `NNNN-short-name.md`). Once accepted, don't rewrite in
   place — append new information as a dated `## Refinement` section. This preserves the audit trail.
 - Prompts cite the decision, not a paraphrase.
+- **The coordinator authors the decision record directly — it is not an implementer round.** A design
+  decision is cross-cutting and has no code to write yet; investigating the current model and writing up
+  the options, a recommendation, and the open questions *for the human* is coordination work. Reserve
+  implementer sessions for code. (Lock it *before* the round that cites it — §2.)
 
 (ADRs — Architecture Decision Records — are the common form; any durable, numbered, append-only format
 works.)
@@ -315,10 +342,14 @@ the comment. No status file can catch that. Only reading the code can.
 
 ### The rules
 
-- **One writer per file.** The coordinator edits the JSON — when it drafts a round, and on every
-  verification pass. You flip statuses from the dashboard (which writes the same file). **Nobody edits
-  the rendered board or the dashboard HTML.** (The presence board is a *different* file with a
-  different writer — see §9. Don't merge them.)
+- **One writer per file, and never edit the DERIVED view to change what it shows.** The coordinator
+  edits the JSON — when it drafts a round, and on every verification pass. You flip statuses from the
+  dashboard (which writes the same file). **Nobody edits the rendered board or the dashboard HTML.**
+  *I broke this once: to make a single item read "ready," an agent widened the readiness predicate in
+  the dashboard code itself — which silently reflagged four unrelated items and broke the view.
+  Readiness is DERIVED; the fix was a one-field change in the source, not the renderer. If a derived
+  view shows the wrong thing, the bug is in the data, not the deriver.* (The presence board is a
+  *different* file with a different writer — see §9. Don't merge them.)
 - **Ship = mark `done` in the JSON, in the same pass that writes the ledger entry.** The item then
   leaves the *rendered* board automatically. It is retained in the JSON — that is the history, and for
   a gate it is the *only* record that exists.
@@ -358,7 +389,39 @@ still contains sentences that were true when written and are lies now.
 
 ---
 
-## 11. Hard rules (you fill these in)
+## 11. Deploying: make it observable — and check parity
+
+The human owns the deploy verbs (§12), but the *method* still has three things to say about release —
+all learned the same week, all about not guessing.
+
+**Stamp every deployed surface with what it is.** A build id — a commit short-SHA plus a timestamp —
+rendered in the UI **and** returned in every API/tool response. Without it, "is my change live yet?" is
+a guess you burn round-trips inferring from behaviour; with it, a reviewing agent confirms a deploy by
+reading the SHA off one response. Capture the id **at build time from the pipeline** (the CI job knows
+the commit it's shipping) — **never commit it into the source**, which is a chicken-and-egg. And beware
+a naive "is the tree dirty?" check: with no pipeline id set it falls back to local git, and untracked
+build artifacts (a cache dir, a build-output folder) flip it to a false *dirty*. *We chased a phantom
+`-dirty` badge on a clean release for exactly this reason.*
+
+**Budget for propagation lag in post-deploy checks.** An empty or stale result *right after* a deploy is
+often the surface not having propagated yet (or data not re-seeded) — **not** a defect. Read the build
+stamp before you conclude anything. *A new grouping came back empty on the first re-import because it ran
+against the not-yet-deployed client; the identical import on retry populated it. Diagnosing that as a
+code bug would have burned a round.*
+
+**When two surfaces share a contract, check PARITY before the deploy gate.** If a client and a server
+(or two services) write the same store or share a wire format and are built **in parallel**, a blocker
+found in one must propagate to the other — and the gate must assert the two still **agree** (same keys,
+same names). Neither side's own tests can catch this; it's an emergent, cross-surface property. *A
+rename ran client and server in parallel; the client hit a shared-engine blocker and correctly stopped
+after one of three renames while the server did all three. Each was internally green. Shipping them
+together would have split the store — caught only by comparing the two contracts directly.* This gets
+sharper in a mixed-model shop, where the two surfaces may be built by different agents that never see
+each other's reasoning.
+
+---
+
+## 12. Hard rules (you fill these in)
 
 A few decisions should be **hard rules** — non-negotiable, override default behavior, no relitigation
 without changing the source of truth. They exist because they're easy to violate by accident and
@@ -372,7 +435,7 @@ Two that nearly every project wants:
 
 ---
 
-## 12. Adopt it
+## 13. Adopt it
 
 See `docs/ADOPTING.md` for a step-by-step, and `example/` for a small filled-in instance. The shortest
 path: fill `CONFIGURE.md`, drop in `scripts/`, wire one integration (`integrations/claude-code/` or
